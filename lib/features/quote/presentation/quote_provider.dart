@@ -16,7 +16,7 @@ final translationApiServiceProvider = Provider<TranslationApiService>((ref) => T
 class QuoteNotifier extends Notifier<QuoteState>{
   @override
   QuoteState build() {
-    fetchRandomQuote();
+    Future.microtask(() => fetchRandomQuote()) ;
     return QuoteState(isLoading: true);
   }
 
@@ -26,6 +26,8 @@ class QuoteNotifier extends Notifier<QuoteState>{
     try {
       final apiService = ref.read(quoteApiServiceProvider);
       final newQuote = await apiService.getRandomQuote();
+
+
       state = state.copyWith(isLoading: false, quote: newQuote);
     } catch(e){
       state = state.copyWith(isLoading: false, error: e.toString());

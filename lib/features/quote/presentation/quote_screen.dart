@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quote_app/features/quote/data/quote_state.dart';
 import 'package:quote_app/features/quote/presentation/quote_provider.dart';
 
 class QuoteScreen extends ConsumerWidget {
@@ -8,73 +8,100 @@ class QuoteScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quoteAsyncValue = ref.watch(randomQuoteProvider);
+    final state = ref.watch(quoteNotifierProvider);
+    final notifier = ref.read(quoteNotifierProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(title: Text("Random quotes"), centerTitle: true),
-      body: Center(
-        child: quoteAsyncValue.when(
-          data: (quote) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                      child: Text("${quote.quote}",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 24))),
-                ),
+      body: Center(child: _buildBody(context, state, notifier)),
+    );
+  }
 
-                SizedBox(height: 12),
+  Widget _buildBody(
+    BuildContext context,
+    QuoteState state,
+    QuoteNotifier notifier,
+  ) {
+    if (state.isLoading) return const CircularProgressIndicator();
 
-                Text(
-                  "${quote.author}",
-                  style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
-                ),
+    if (state.error != null && state.quote == null) {
+      return SizedBox(
+        width: double.infinity,
+        child: Text("Error: ${state.error}", textAlign: TextAlign.center),
+      );
+    }
 
-                SizedBox(height: 24),
+    final quote = state.quote;
 
-                ElevatedButton(
-                  onPressed: () {
-                    ref.refresh(randomQuoteProvider);
-                  },
-                  child: Text("Get a quote"),
-                ),
-              ],
-            );
+    if (quote == null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text("There any quotes", textAlign: TextAlign.center, style: TextStyle(
+            fontSize: 20
+          ),
+          ),
+          
+          SizedBox(height: 24,),
+          
+          ElevatedButton(onPressed: (){
+            notifier.fetchRandomQuote();
           },
-          error: (error, stackTrace) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      "The quote hasn't been downloaded: ${error}",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 24),
+              child: Text("Try again"))
+        ],
+      ) ;
+    }
 
-                ElevatedButton(
-                  onPressed: () {
-                    ref.refresh(randomQuoteProvider);
-                  },
-                  child: Text("Get a Quote"),
-                ),
-              ],
-            );
-          },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              quote.quote,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
 
-          loading: () {
-            return const Center(child: CircularProgressIndicator());
-          },
-        ),
+          const SizedBox(height: 24),
+
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              quote.author,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+
+          if(state.translatedText != null) ...[
+            Text(state.translatedText!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              color: Colors.blueGrey
+            ),
+            ),
+            const SizedBox(height: 24,)
+          ],
+
+          ElevatedButton.icon(onPressed: state.isTranslating ? null : notifier.translateQuote,
+              icon: state.isTranslating ?
+              const SizedBox(width: 16, height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2,)
+              ) : const Icon(Icons.translate),
+              label: Text(state.isTranslating ? "Translating" : "Translate")
+          ),
+
+          const SizedBox(height: 12,),
+
+          OutlinedButton.icon(onPressed: () => notifier.fetchRandomQuote(),
+              icon: Icon(Icons.refresh),
+              label: const Text("Get a Quote"))
+        ],
       ),
     );
   }
